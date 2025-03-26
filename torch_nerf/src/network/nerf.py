@@ -36,6 +36,7 @@ class NeRF(nn.Module):
         self.pos_dim = pos_dim
         self.view_dir_dim = view_dir_dim
         self.feat_dim = feat_dim
+        self.relu = nn.ReLU()
         self.layers = nn.ModuleList(
             [
                 nn.Linear(pos_dim, feat_dim),  # input layer 0
@@ -48,9 +49,11 @@ class NeRF(nn.Module):
                 nn.ReLU(),
                 nn.Linear(feat_dim, feat_dim),  # 4th hidden layer 8
                 nn.ReLU(),
-                nn.Linear(feat_dim, feat_dim),  # 5th hidden layer, skip connection 10
+                nn.Linear(
+                    feat_dim + pos_dim, feat_dim
+                ),  # 5th hidden layer, skip connection 10
                 nn.ReLU(),
-                nn.Linear(feat_dim + pos_dim, feat_dim),  # 6th hidden layer 12
+                nn.Linear(feat_dim, feat_dim),  # 6th hidden layer 12
                 nn.ReLU(),
                 nn.Linear(feat_dim, feat_dim),  # 7th hidden layer 14
                 nn.ReLU(),
@@ -114,6 +117,7 @@ class NeRF(nn.Module):
         x = self.layers[16](x)
         sigma_and_x = self.layers[17](x)
         sigma = sigma_and_x[:, 0:1]
+        sigma = self.relu(sigma)
         x = sigma_and_x[:, 1:]
         x = self.layers[18](x)
         x = torch.cat([x, view_dir], dim=1)

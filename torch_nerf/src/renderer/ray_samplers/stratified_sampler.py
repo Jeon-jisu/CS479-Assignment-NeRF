@@ -7,7 +7,7 @@ from typeguard import typechecked
 
 from jaxtyping import Float, Shaped, jaxtyped
 import torch
-
+import numpy as np
 from torch_nerf.src.renderer.ray_samplers.sampler_base import RaySamplerBase
 from torch_nerf.src.cameras.rays import RayBundle, RaySamples
 from torch_nerf.src.renderer.ray_samplers.utils import sample_pdf
@@ -66,17 +66,22 @@ class StratifiedSampler(RaySamplerBase):
                 The values should lie in the range defined by the near and
                 far bounds of the ray bundle.
         """
-        t_bins = self.create_t_bins(num_sample, ray_bundle.device)
-        t_bins = t_bins.expand(len(ray_bundle), num_sample)
-        t_samples = torch.rand_like(t_bins)
-        uniform_samples = self.map_t_to_euclidean(
-            t_samples, ray_bundle.near, ray_bundle.far
-        )
-        return uniform_samples
+        a = ray_bundle
+        t_bins = self.create_t_bins(
+            num_sample + 1, a.origins.device
+        )  # (ex. 0, 0.1, 0.2, ... 1.0) n=10
+        near, far = a.nears[0].item(), a.fars[0].item()
+        diff = self.map_t_to_euclidean(
+            t_bins, near, far
+        )  # diff_i = t_bins_{i+1} - t_bins_{i}
+        intervals = diff[1:] - diff[:-1]
+        t_samples = diff[:-1] + intervals * torch.rand_like(intervals)
+        return t_samples.unsqueeze(0).expand(a.nears.shape[0], -1)
 
         # TODO
         # HINT: Freely use the provided methods 'create_t_bins' and 'map_t_to_euclidean'
         # raise NotImplementedError("Task 2")
+        # a.nears 는 tensor, 필요한 것은 float
 
     @jaxtyped
     @typechecked
