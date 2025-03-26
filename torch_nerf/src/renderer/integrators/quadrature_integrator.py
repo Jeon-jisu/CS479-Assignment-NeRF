@@ -22,7 +22,9 @@ class QuadratureIntegrator(IntegratorBase):
         sigma: Float[torch.Tensor, "num_ray num_sample"],
         radiance: Float[torch.Tensor, "num_ray num_sample 3"],
         delta: Float[torch.Tensor, "num_ray num_sample"],
-    ) -> Tuple[Float[torch.Tensor, "num_ray 3"], Float[torch.Tensor, "num_ray num_sample"]]:
+    ) -> Tuple[
+        Float[torch.Tensor, "num_ray 3"], Float[torch.Tensor, "num_ray num_sample"]
+    ]:
         """
         Computes quadrature rule to approximate integral involving in volume rendering.
         Pixel colors are computed as weighted sums of radiance values collected along rays.
@@ -41,6 +43,11 @@ class QuadratureIntegrator(IntegratorBase):
                 A weight at a sample point is defined as a product of transmittance and opacity,
                 where opacity (alpha) is defined as 1 - exp(-sigma * delta).
         """
+        weights = torch.exp(-torch.cumsum(sigma * delta))
+
+        color_element = weights * (1 - torch.exp(-sigma * delta)) * radiance
+        rgbs = torch.sum(color_element)  # 누적합
+        return rgbs, weights
         # TODO
         # HINT: Look up the documentation of 'torch.cumsum'.
-        raise NotImplementedError("Task 3")
+        # raise NotImplementedError("Task 3")
