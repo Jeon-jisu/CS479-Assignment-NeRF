@@ -43,10 +43,18 @@ class QuadratureIntegrator(IntegratorBase):
                 A weight at a sample point is defined as a product of transmittance and opacity,
                 where opacity (alpha) is defined as 1 - exp(-sigma * delta).
         """
-        weights = torch.exp(-torch.cumsum(sigma * delta))
+        # T_1 = exp(-0) = 1, T_2 = exp(- sig_1 - delta_)
+        other_cumsum = torch.cumsum(sigma[:, :-1] * delta[:, :-1], dim=1)
+        final_cumsum = torch.cat(
+            [torch.zeros_like(other_cumsum[:, :1]), other_cumsum], dim=1
+        )
+        pass_rate = torch.exp(-final_cumsum)
+        opacity = 1 - torch.exp(-sigma * delta)
+        weights = pass_rate * opacity
+        # print("weights.shape",weights.shape, "(1 - torch.exp(-sigma * delta))",(1 - torch.exp(-sigma * delta)).shape, "radiance.shape",radiance.shape,)
 
-        color_element = weights * (1 - torch.exp(-sigma * delta)) * radiance
-        rgbs = torch.sum(color_element)  # 누적합
+        color_element = weights.unsqueeze(-1) * radiance
+        rgbs = torch.sum(color_element, dim=1)  # 누적합
         return rgbs, weights
         # TODO
         # HINT: Look up the documentation of 'torch.cumsum'.
